@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dataset de Cuerdas — Perceptrón Neural</title>
+  <meta name="description" content="Visualizador de dataset para entrenamiento de red neuronal de clasificación de cuerdas.">
+  
+  <style>
+    :root {
+      /* Paleta Neural Dark */
+      --bg: #020408;
+      --panel: #0a0e17;
+      --panel-hover: #111625;
+      --border: rgba(255, 255, 255, 0.08);
+      --accent-primary: #6366f1; /* Indigo */
+      --accent-secondary: #8b5cf6; /* Violet */
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      
+      /* Glassmorphism */
+      --glass-bg: rgba(10, 14, 23, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.05);
+      --glass-blur: blur(12px);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      /* Fondo dinámico sutil */
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      padding: 40px 20px;
+    }
+
+    /* --- Typography & Layout --- */
+    h1, h2, h3, p { margin: 0; }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* --- Header --- */
+    header {
+      margin-bottom: 40px;
+      text-align: center;
+      position: relative;
+    }
+    
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .logo-box {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    
+    .logo-icon { width: 24px; height: 24px; color: white; }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 600px;
+      margin: 8px auto 0;
+      line-height: 1.5;
+    }
+
+    /* --- Controls (Search bar) --- */
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 300px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 16px 20px 16px 48px;
+      border-radius: 16px;
+      color: white;
+      font-size: 15px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      width: 20px;
+      height: 20px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 12px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: var(--panel-hover);
+      border-color: var(--accent-secondary);
+      transform: translateY(-1px);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      border: none;
+      color: white;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+    
+    .btn.primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    /* --- Grid Layout --- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 24px;
+    }
+
+    /* --- Card Style --- */
+    .card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 24px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.3);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    /* Card Glow Effect */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .card-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 20px;
+      background: rgba(99, 102, 241, 0.1);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+
+    /* Stats Grid inside Card */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .stat-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    /* Details Toggle */
+    details {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: color 0.2s;
+    }
+
+    summary:hover {
+      color: white;
+      background: rgba(255,255,255,0.02);
+    }
+
+    summary::after {
+      content: '+';
+      font-size: 16px;
+    }
+    
+    details[open] summary::after {
+      content: '-';
+    }
+
+    /* Table Styles */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      border-top: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      white-space: nowrap;
+    }
+
+    th {
+      background: rgba(255,255,255,0.02);
+      color: var(--text-muted);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+
+    td {
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    
+    /* Footer */
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+
+    /* Helper Classes */
+    .text-accent { color: var(--accent-secondary); }
+    .hidden { display: none; }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .controls { flex-direction: column; align-items: stretch; }
+      h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-box">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 16a6 6 0 1 1 6-6 6 6 0 0 1-6 6z" opacity="0.5"/>
+            <path d="M12 8v4l3 3"/>
+          </svg>
+        </div>
+        <div style="text-align: left;">
+          <div style="font-weight: 700; font-size: 14px; color: var(--accent-primary); letter-spacing: 1px;">IA CORE</div>
+        </div>
+      </div>
+      <h1>Dataset de Entrenamiento</h1>
+      <p class="subtitle">
+        Registro completo de mediciones físicas (diámetro, resistencia, peso, paso) utilizadas para entrenar el modelo de clasificación de cuerdas.
+      </p>
+    </header>
+
+    <div class="controls">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por código (ej: 14 AWG), material...">
+      </div>
+      <div class="actions">
+        <button id="btnReset" class="btn">Resetear</button>
+        <button id="btnDownload" class="btn primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Descargar JSON
+        </button>
+      </div>
+    </div>
+
+    <main id="cardsContainer" class="grid">
+      <!-- Cards inyectadas vía JS -->
+    </main>
+
+    <footer>
+      <p>Perceptrón Neural v1.0 &bull; Generado automáticamente para revisión técnica.</p>
+    </footer>
+  </div>
+
+  <!-- DATASET COMPLETO -->
+  <script id="dataset" type="application/json">
+{
+  "12_AWG_7H": {
+    "codigo": "12 AWG 7 HILOS",
+    "material": "Cobre rojo",
+    "cantidad_hilos": 7,
+    "paso_mm": 37.0,
+    "mediciones": [
+      { "diametro_mm": 0.776, "resistencia_ohm_km": 5.2850, "peso_g_m": 29.400, "paso_mm": 37.0 },
+      { "diametro_mm": 0.774, "resistencia_ohm_km": 5.2557, "peso_g_m": 29.200, "paso_mm": 37.0 },
+      { "diametro_mm": 0.774, "resistencia_ohm_km": 5.2461, "peso_g_m": 29.400, "paso_mm": 37.0 },
+      { "diametro_mm": 0.782, "resistencia_ohm_km": 5.2002, "peso_g_m": 29.800, "paso_mm": 37.0 },
+      { "diametro_mm": 0.776, "resistencia_ohm_km": 5.2211, "peso_g_m": 29.300, "paso_mm": 37.0 },
+      { "diametro_mm": 0.778, "resistencia_ohm_km": 5.1929, "peso_g_m": 29.300, "paso_mm": 37.0 },
+      { "diametro_mm": 0.778, "resistencia_ohm_km": 5.1929, "peso_g_m": 29.300, "paso_mm": 37.0 },
+      { "diametro_mm": 0.772, "resistencia_ohm_km": 5.2986, "paso_mm": 37.0 },
+      { "diametro_mm": 0.775, "resistencia_ohm_km": 5.2814, "paso_mm": 37.0 }
+    ]
+  },
+  "14_AWG_7H": {
+    "codigo": "14 AWG 7 HILOS",
+    "material": "Cobre rojo",
+    "cantidad_hilos": 7,
+    "paso_mm": 29.0,
+    "mediciones": [
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.2923, "peso_g_m": 18.600, "paso_mm": 29.00 },
+      { "diametro_mm": 0.612, "resistencia_ohm_km": 8.2329, "peso_g_m": 18.600, "paso_mm": 29.00 },
+      { "diametro_mm": 0.613, "resistencia_ohm_km": 8.2734, "peso_g_m": 18.800, "paso_mm": 29.00 },
+      { "diametro_mm": 0.612, "resistencia_ohm_km": 8.2892, "peso_g_m": 18.700, "paso_mm": 29.00 },
+      { "diametro_mm": 0.609, "resistencia_ohm_km": 8.3696, "peso_g_m": 18.200, "paso_mm": 29.00 },
+      { "diametro_mm": 0.608, "resistencia_ohm_km": 8.2898, "peso_g_m": 18.300, "paso_mm": 29.00 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.2613, "peso_g_m": 18.600, "paso_mm": 29.00 },
+      { "diametro_mm": 0.610, "resistencia_ohm_km": 8.2268, "peso_g_m": 18.600, "paso_mm": 29.00 },
+      { "diametro_mm": 0.608, "resistencia_ohm_km": 8.2806, "peso_g_m": 18.400, "paso_mm": 29.00 },
+      { "diametro_mm": 0.605, "resistencia_ohm_km": 8.4936, "peso_g_m": 17.900, "paso_mm": 29.00 },
+      { "diametro_mm": 0.605, "resistencia_ohm_km": 8.4545, "peso_g_m": 18.300, "paso_mm": 27.00 },
+      { "diametro_mm": 0.605, "resistencia_ohm_km": 8.3617, "peso_g_m": 18.400, "paso_mm": 27.00 },
+      { "diametro_mm": 0.604, "resistencia_ohm_km": 8.5084, "peso_g_m": 18.300, "paso_mm": 27.00 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.3583, "peso_g_m": 18.300, "paso_mm": 26.40 },
+      { "diametro_mm": 0.614, "resistencia_ohm_km": 8.4280, "peso_g_m": 18.200, "paso_mm": 26.40 },
+      { "diametro_mm": 0.609, "resistencia_ohm_km": 8.3162, "peso_g_m": 18.000, "paso_mm": 26.00 },
+      { "diametro_mm": 0.608, "resistencia_ohm_km": 8.4991, "peso_g_m": 18.000, "paso_mm": 26.00 },
+      { "diametro_mm": 0.608, "resistencia_ohm_km": 8.3114, "peso_g_m": 18.200, "paso_mm": 26.00 },
+      { "diametro_mm": 0.607, "resistencia_ohm_km": 8.5424, "peso_g_m": 18.100, "paso_mm": 26.00 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.3189, "peso_g_m": 18.400, "paso_mm": 27.00 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.2949, "peso_g_m": 18.500, "paso_mm": 26.50 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.2940, "peso_g_m": 18.500, "paso_mm": 26.50 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.3579, "peso_g_m": 18.500, "paso_mm": 26.50 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.4359, "peso_g_m": 18.500, "paso_mm": 25.93 },
+      { "diametro_mm": 0.602, "resistencia_ohm_km": 8.4988, "peso_g_m": 17.800, "paso_mm": 25.95 },
+      { "diametro_mm": 0.604, "resistencia_ohm_km": 8.3151, "peso_g_m": 18.000, "paso_mm": 27.00 },
+      { "diametro_mm": 0.604, "resistencia_ohm_km": 8.5461, "peso_g_m": 18.000, "paso_mm": 27.00 },
+      { "diametro_mm": 0.619, "resistencia_ohm_km": 8.4959, "peso_g_m": 18.800, "paso_mm": 27.00 },
+      { "diametro_mm": 0.612, "resistencia_ohm_km": 8.4959, "peso_g_m": 18.400, "paso_mm": 27.00 },
+      { "diametro_mm": 0.614, "resistencia_ohm_km": 8.2673, "peso_g_m": 18.300, "paso_mm": 27.00 },
+      { "diametro_mm": 0.612, "resistencia_ohm_km": 8.3722, "peso_g_m": 18.500, "paso_mm": 26.50 },
+      { "diametro_mm": 0.610, "resistencia_ohm_km": 8.3381, "peso_g_m": 18.700, "paso_mm": 26.50 },
+      { "diametro_mm": 0.612, "resistencia_ohm_km": 8.2825, "peso_g_m": 18.600, "paso_mm": 25.00 },
+      { "diametro_mm": 0.611, "resistencia_ohm_km": 8.3275, "peso_g_m": 18.600, "paso_mm": 25.00 },
+      { "diametro_mm": 0.610, "resistencia_ohm_km": 8.3234, "peso_g_m": 18.500, "paso_mm": 25.00 },
+      { "diametro_mm": 0.609, "resistencia_ohm_km": 8.3689, "peso_g_m": 18.500, "paso_mm": 25.00 },
+      { "diametro_mm": 0.609, "resistencia_ohm_km": 8.3690, "peso_g_m": 18.500, "paso_mm": 29.00 },
+      { "diametro_mm": 0.608, "resistencia_ohm_km": 8.3455, "peso_g_m": 18.300, "paso_mm": 29.00 },
+      { "diametro_mm": 0.608, "resistencia_ohm_km": 8.3591, "peso_g_m": 18.400, "paso_mm": 29.00 },
+      { "diametro_mm": 0.612, "resistencia_ohm_km": 8.4621, "peso_g_m": 18.400, "paso_mm": 29.00 },
+      { "diametro_mm": 0.613, "resistencia_ohm_km": 8.4535, "peso_g_m": 18.600, "paso_mm": 29.00 }
+    ]
+  },
+  "16_AWG_7H": {
+    "codigo": "16 AWG 7 HILOS",
+    "material": "Cobre rojo",
+    "cantidad_hilos": 7,
+    "paso_mm": 23.0,
+    "mediciones": [
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2224, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.0164, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.0520, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2704, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.3248, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.3248, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2224, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2224, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2214, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2214, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2214, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2234, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2234, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2234, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2229, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2229, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2211, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2211, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.4595, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.4595, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2669, "peso_g_m": 11.500, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2669, "peso_g_m": 11.490, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2669, "peso_g_m": 11.510, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2487, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.3236, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.3236, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2880, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2469, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2984, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.483, "resistencia_ohm_km": 13.2671, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2296, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2850, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2248, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.478, "resistencia_ohm_km": 13.2974, "peso_g_m": 11.600, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2544, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2859, "peso_g_m": 11.700, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2757, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2425, "peso_g_m": 11.800, "paso_mm": 23 },
+      { "diametro_mm": 0.477, "resistencia_ohm_km": 13.2288, "peso_g_m": 11.500, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2444, "peso_g_m": 11.500, "paso_mm": 23 },
+      { "diametro_mm": 0.482, "resistencia_ohm_km": 13.2356, "peso_g_m": 11.500, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2674, "peso_g_m": 11.500, "paso_mm": 23 },
+      { "diametro_mm": 0.481, "resistencia_ohm_km": 13.2239, "peso_g_m": 11.400, "paso_mm": 23 },
+      { "diametro_mm": 0.480, "resistencia_ohm_km": 13.2451, "peso_g_m": 11.000, "paso_mm": 23 }
+    ]
+  },
+  "18_AWG_7H": {
+    "codigo": "18 AWG 7 HILOS",
+    "material": "Cobre rojo",
+    "cantidad_hilos": 7,
+    "paso_mm": 18.0,
+    "mediciones": [
+      { "diametro_mm": 0.386, "resistencia_ohm_km": 21.6148, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.386, "resistencia_ohm_km": 21.2285, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.386, "resistencia_ohm_km": 21.4825, "peso_g_m": 7.000, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.4793, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.8563, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.6291, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.1400, "peso_g_m": 7.100, "paso_mm": 18 },
+      { "diametro_mm": 0.385, "resistencia_ohm_km": 21.0800, "peso_g_m": 6.900, "paso_mm": 18 },
+      { "diametro_mm": 0.386, "resistencia_ohm_km": 21.3102, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.8149, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.3169, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.8795, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.383, "resistencia_ohm_km": 21.8264, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.7950, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.8423, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.379, "resistencia_ohm_km": 21.8103, "peso_g_m": 7.200, "paso_mm": 17 },
+      { "diametro_mm": 0.378, "resistencia_ohm_km": 22.3595, "peso_g_m": 7.200, "paso_mm": 17 },
+      { "diametro_mm": 0.375, "resistencia_ohm_km": 22.0751, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.376, "resistencia_ohm_km": 22.1634, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.383, "resistencia_ohm_km": 21.2040, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.387, "resistencia_ohm_km": 21.1744, "peso_g_m": 7.100, "paso_mm": 18 },
+      { "diametro_mm": 0.383, "resistencia_ohm_km": 21.0810, "peso_g_m": 6.900, "paso_mm": 18 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.6710, "peso_g_m": 7.000, "paso_mm": 18 },
+      { "diametro_mm": 0.388, "resistencia_ohm_km": 20.9601, "peso_g_m": 6.900, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 20.9618, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.385, "resistencia_ohm_km": 20.9931, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.0017, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.5460, "peso_g_m": 7.100, "paso_mm": 18 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.4432, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.1821, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.375, "resistencia_ohm_km": 22.1248, "peso_g_m": 7.400, "paso_mm": 17 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.6208, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.5218, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.1799, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.375, "resistencia_ohm_km": 22.3692, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.6704, "peso_g_m": 7.000, "paso_mm": 18 },
+      { "diametro_mm": 0.383, "resistencia_ohm_km": 21.4098, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.385, "resistencia_ohm_km": 21.0541, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.385, "resistencia_ohm_km": 21.5201, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.2833, "peso_g_m": 7.000, "paso_mm": 18 },
+      { "diametro_mm": 0.379, "resistencia_ohm_km": 21.6148, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.377, "resistencia_ohm_km": 21.8653, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.377, "resistencia_ohm_km": 21.3280, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.5076, "peso_g_m": 7.100, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.6694, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.2853, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.1825, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.381, "resistencia_ohm_km": 21.8070, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.0702, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.375, "resistencia_ohm_km": 21.7572, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.4469, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.374, "resistencia_ohm_km": 21.8728, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.385, "resistencia_ohm_km": 21.0036, "peso_g_m": 7.200, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.5820, "peso_g_m": 7.300, "paso_mm": 17 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.8148, "peso_g_m": 7.100, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.8482, "peso_g_m": 7.300, "paso_mm": 18 },
+      { "diametro_mm": 0.382, "resistencia_ohm_km": 21.2003, "peso_g_m": 7.100, "paso_mm": 18 },
+      { "diametro_mm": 0.384, "resistencia_ohm_km": 21.2925, "peso_g_m": 7.400, "paso_mm": 18 },
+      { "diametro_mm": 0.400, "resistencia_ohm_km": 21.3055, "peso_g_m": 7.400, "paso_mm": 18 }
+    ]
+  },
+  "20_AWG_7H": {
+    "codigo": "20 AWG 7 HILOS",
+    "material": "Cobre rojo",
+    "cantidad_hilos": 7,
+    "paso_mm": 15,
+    "mediciones": [
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 32.7464, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.300, "resistencia_ohm_km": 32.7185, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.300, "resistencia_ohm_km": 33.3000, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.302, "resistencia_ohm_km": 33.6488, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.7732, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.7339, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.7884, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 33.7457, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 34.0953, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 34.0049, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 34.0049, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.4841, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.2775, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.4841, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 32.6135, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.5071, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 34.1284, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.7405, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.1588, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.286, "resistencia_ohm_km": 33.7405, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.2916, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.2916, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.309, "resistencia_ohm_km": 33.2916, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 37.6612, "peso_g_m": 4.4, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 34.4470, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.9372, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.6570, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.303, "resistencia_ohm_km": 34.1669, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.303, "resistencia_ohm_km": 33.4120, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.5870, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.302, "resistencia_ohm_km": 33.7215, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.2980, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 33.9450, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 34.1020, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.301, "resistencia_ohm_km": 33.8600, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.300, "resistencia_ohm_km": 34.2200, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.299, "resistencia_ohm_km": 34.3600, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.307, "resistencia_ohm_km": 33.1800, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.308, "resistencia_ohm_km": 33.0500, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.309, "resistencia_ohm_km": 33.1200, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.298, "resistencia_ohm_km": 34.4100, "peso_g_m": 4.4, "paso_mm": 15 },
+      { "diametro_mm": 0.297, "resistencia_ohm_km": 34.4800, "peso_g_m": 4.4, "paso_mm": 15 },
+      { "diametro_mm": 0.305, "resistencia_ohm_km": 33.6700, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.304, "resistencia_ohm_km": 33.8200, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.303, "resistencia_ohm_km": 34.0100, "peso_g_m": 4.6, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 33.3600, "peso_g_m": 4.7, "paso_mm": 15 },
+      { "diametro_mm": 0.302, "resistencia_ohm_km": 34.1800, "peso_g_m": 4.5, "paso_mm": 15 },
+      { "diametro_mm": 0.306, "resistencia_ohm_km": 34.1669, "peso_g_m": 4.5, "paso_mm": 15 }
+    ]
+  },
+  "22_AWG_7H": {
+    "codigo": "22 AWG 7 HILOS",
+    "material": "Cobre rojo",
+    "cantidad_hilos": 7,
+    "paso_mm": 12.0,
+    "mediciones": [
+      { "diametro_mm": 0.253, "resistencia_ohm_km": 49.7931, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.252, "resistencia_ohm_km": 47.8925, "peso_g_m": 3.100, "paso_mm": 12.00 },
+      { "diametro_mm": 0.251, "resistencia_ohm_km": 48.3812, "peso_g_m": 3.200, "paso_mm": 12.00 },
+      { "diametro_mm": 0.256, "resistencia_ohm_km": 47.4550, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.253, "resistencia_ohm_km": 47.8345, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.252, "resistencia_ohm_km": 47.0892, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 48.3708, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.255, "resistencia_ohm_km": 47.3941, "peso_g_m": 3.400, "paso_mm": 18.00 },
+      { "diametro_mm": 0.256, "resistencia_ohm_km": 50.5970, "peso_g_m": 3.400, "paso_mm": 12.00 },
+      { "diametro_mm": 0.257, "resistencia_ohm_km": 48.5732, "peso_g_m": 3.600, "paso_mm": 12.00 },
+      { "diametro_mm": 0.256, "resistencia_ohm_km": 47.8749, "peso_g_m": 3.400, "paso_mm": 12.00 },
+      { "diametro_mm": 0.258, "resistencia_ohm_km": 46.3070, "peso_g_m": 3.400, "paso_mm": 12.00 },
+      { "diametro_mm": 0.258, "resistencia_ohm_km": 46.2963, "peso_g_m": 3.400, "paso_mm": 12.00 },
+      { "diametro_mm": 0.257, "resistencia_ohm_km": 46.7719, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.257, "resistencia_ohm_km": 46.3273, "peso_g_m": 3.400, "paso_mm": 11.00 },
+      { "diametro_mm": 0.256, "resistencia_ohm_km": 46.3273, "peso_g_m": 3.300, "paso_mm": 11.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 49.4930, "peso_g_m": 3.100, "paso_mm": 11.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 49.9903, "peso_g_m": 3.100, "paso_mm": 11.86 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 49.8938, "peso_g_m": 3.100, "paso_mm": 11.86 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 48.6962, "peso_g_m": 3.100, "paso_mm": 11.86 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 49.0618, "peso_g_m": 3.100, "paso_mm": 12.00 },
+      { "diametro_mm": 0.252, "resistencia_ohm_km": 48.2947, "peso_g_m": 3.300, "paso_mm": 11.86 },
+      { "diametro_mm": 0.255, "resistencia_ohm_km": 47.0035, "peso_g_m": 3.200, "paso_mm": 12.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 47.4920, "peso_g_m": 3.200, "paso_mm": 12.00 },
+      { "diametro_mm": 0.261, "resistencia_ohm_km": 54.0871, "peso_g_m": 3.100, "paso_mm": 12.00 },
+      { "diametro_mm": 0.260, "resistencia_ohm_km": 48.8277, "peso_g_m": 3.100, "paso_mm": 12.00 },
+      { "diametro_mm": 0.255, "resistencia_ohm_km": 49.6413, "peso_g_m": 3.200, "paso_mm": 12.00 },
+      { "diametro_mm": 0.260, "resistencia_ohm_km": 49.1403, "peso_g_m": 3.200, "paso_mm": 12.00 },
+      { "diametro_mm": 0.260, "resistencia_ohm_km": 47.5612, "peso_g_m": 2.800, "paso_mm": 12.00 },
+      { "diametro_mm": 0.240, "resistencia_ohm_km": 54.1400, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.259, "resistencia_ohm_km": 47.4499, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.258, "resistencia_ohm_km": 47.4600, "peso_g_m": 3.000, "paso_mm": 12.00 },
+      { "diametro_mm": 0.251, "resistencia_ohm_km": 50.7772, "peso_g_m": 3.000, "paso_mm": 12.00 },
+      { "diametro_mm": 0.251, "resistencia_ohm_km": 50.7670, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.257, "resistencia_ohm_km": 48.9908, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 48.7889, "peso_g_m": 3.300, "paso_mm": 12.00 },
+      { "diametro_mm": 0.255, "resistencia_ohm_km": 48.7398, "peso_g_m": 3.280, "paso_mm": 12.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 49.6288, "peso_g_m": 3.280, "paso_mm": 12.00 },
+      { "diametro_mm": 0.254, "resistencia_ohm_km": 49.0328, "peso_g_m": 3.280, "paso_mm": 12.00 }
+    ]
+  }
+}
+  </script>
+
+  <!-- LÓGICA DE LA APP (Vanilla JS) -->
+  <script>
+    // --- 1. Utilidades y Configuración ---
+    const fmt = (n, d = 3) => {
+      if (n === null || n === undefined || Number.isNaN(n)) return '—';
+      // Muestra hasta d decimales, quitando ceros innecesarios al final
+      return Number(n).toFixed(d).replace(/\.?0+$/, "");
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    // --- 2. Carga de Datos ---
+    const rawData = $('dataset').textContent.trim();
+    let DATA = {};
+    try {
+      DATA = JSON.parse(rawData);
+    } catch (e) {
+      console.error("Error parseando JSON:", e);
+      $('cardsContainer').innerHTML = '<div style="color:red;text-align:center">Error cargando dataset. Revisa la consola.</div>';
+    }
+
+    // --- 3. Análisis Estadístico ---
+    function getStatistics(measurements) {
+      if (!measurements || measurements.length === 0) {
+        return { count: 0, diam: {}, res: {}, peso: {} };
+      }
+
+      const calc = (arr) => {
+        if (!arr.length) return { min: null, max: null, avg: null };
+        const min = Math.min(...arr);
+        const max = Math.max(...arr);
+        const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return { min, max, avg };
+      };
+
+      // Extraer arrays limpios
+      const diams = measurements.map(m => m.diametro_mm).filter(v => v != null);
+      const resis = measurements.map(m => m.resistencia_ohm_km).filter(v => v != null);
+      const pesos = measurements.map(m => m.peso_g_m).filter(v => v != null);
+
+      return {
+        count: measurements.length,
+        diam: calc(diams),
+        res: calc(resis),
+        peso: calc(pesos)
+      };
+    }
+
+    // --- 4. Renderizado de Tarjetas ---
+    function renderCard(key, obj) {
+      const stats = getStatistics(obj.mediciones);
+      const m = obj.mediciones || [];
+
+      // HTML de la tabla de mediciones
+      const tableRows = m.map((row, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${fmt(row.diametro_mm)}</td>
+          <td>${fmt(row.resistencia_ohm_km)}</td>
+          <td>${fmt(row.peso_g_m)}</td>
+          <td>${fmt(row.paso_mm)}</td>
+        </tr>
+      `).join('');
+
+      return `
+        <article class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${obj.codigo}</div>
+              <div class="card-subtitle">
+                <span>${obj.material}</span>
+                <span>•</span>
+                <span>${obj.cantidad_hilos} Hilos</span>
+              </div>
+            </div>
+            <span class="badge">n=${stats.count}</span>
+          </div>
+
+          <div class="stats-container">
+            <!-- Diámetro -->
+            <div class="stat-box">
+              <div class="stat-label">Diámetro (Ø)</div>
+              <div class="stat-value">${fmt(stats.diam.avg)} <span class="stat-unit">mm</span></div>
+              <div class="stat-label" style="margin-top:4px; font-size:10px; opacity:0.7">
+                Min: ${fmt(stats.diam.min)} - Max: ${fmt(stats.diam.max)}
+              </div>
+            </div>
+            
+            <!-- Resistencia -->
+            <div class="stat-box">
+              <div class="stat-label">Resistencia</div>
+              <div class="stat-value">${fmt(stats.res.avg, 2)} <span class="stat-unit">Ω/km</span></div>
+              <div class="stat-label" style="margin-top:4px; font-size:10px; opacity:0.7">
+                Min: ${fmt(stats.res.min, 2)}
+              </div>
+            </div>
+
+            <!-- Peso -->
+            <div class="stat-box">
+              <div class="stat-label">Peso Promedio</div>
+              <div class="stat-value">${fmt(stats.peso.avg)} <span class="stat-unit">g/m</span></div>
+            </div>
+
+            <!-- Paso (nominal) -->
+            <div class="stat-box">
+              <div class="stat-label">Paso Nominal</div>
+              <div class="stat-value">${fmt(obj.paso_mm)} <span class="stat-unit">mm</span></div>
+            </div>
+          </div>
+
+          <details>
+            <summary>Ver Mediciones (${m.length})</summary>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Ø (mm)</th>
+                    <th>Res (Ω)</th>
+                    <th>Peso (g)</th>
+                    <th>Paso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tableRows}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </article>
+      `;
+    }
+
+    function renderApp(filterText = '') {
+      const container = $('cardsContainer');
+      container.innerHTML = ''; // Limpiar
+
+      const term = filterText.toLowerCase();
+      let count = 0;
+
+      // Iterar sobre el dataset y filtrar
+      Object.keys(DATA).forEach(key => {
+        const obj = DATA[key];
+        const searchStr = `${obj.codigo} ${obj.material} ${key}`.toLowerCase();
+        
+        if (searchStr.includes(term)) {
+          const cardHTML = renderCard(key, obj);
+          container.insertAdjacentHTML('beforeend', cardHTML);
+          count++;
+        }
+      });
+
+      if (count === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+            <div style="font-size: 2rem; margin-bottom: 10px;">🔍</div>
+            <p>No se encontraron resultados para "<b>${filterText}</b>"</p>
+          </div>
+        `;
+      }
+    }
+
+    // --- 5. Event Listeners ---
+    
+    // Búsqueda en tiempo real
+    $('searchInput').addEventListener('input', (e) => {
+      renderApp(e.target.value);
+    });
+
+    // Reset
+    $('btnReset').addEventListener('click', () => {
+      $('searchInput').value = '';
+      renderApp();
+    });
+
+    // Descargar JSON
+    $('btnDownload').addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(DATA, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "dataset_cuerdas_v1.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    });
+
+    // Inicialización
+    renderApp();
+
+  </script>
+</body>
+</html>
